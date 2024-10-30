@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Script to install Docker, Minikube, and kubectl on a Linux server using yum
+
+# Update the system
+echo "Updating the system..."
+sudo yum update -y
+
+# Install required dependencies
+echo "Installing curl, wget, and other dependencies..."
+sudo yum install -y curl wget yum-utils device-mapper-persistent-data lvm2
+
+# Install Docker
+echo "Setting up the Docker repository and installing Docker..."
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo yum install docker -y
+systemctl start docker
+ systemctl enable docker
+echo "Docker installation complete. Verifying Docker version..."
+docker --version || { echo "Docker installation failed"; exit 1; }
+
+# Download and install Minikube
+echo "Downloading Minikube..."
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo mv minikube-linux-amd64 /usr/local/bin/minikube
+sudo chmod +x /usr/local/bin/minikube
+echo "Minikube installation complete. Verifying Minikube version..."
+minikube version || { echo "Minikube installation failed"; exit 1; }
+
+# Download and install kubectl
+echo "Downloading kubectl..."
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+
+# Verify kubectl download
+echo "Verifying kubectl download..."
+echo "$(cat kubectl.sha256) kubectl" | sha256sum --check || { echo "kubectl checksum verification failed"; exit 1; }
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+rm kubectl kubectl.sha256
+echo "kubectl installation complete. Verifying kubectl version..."
+kubectl version --client || { echo "kubectl installation failed"; exit 1; }
+
+# Start Minikube with Docker as the driver
+echo "Starting Minikube with Docker as the driver..."
+minikube start --driver=docker --force || { echo "Failed to start Minikube"; exit 1; }
+
+echo "All installations completed successfully!"
